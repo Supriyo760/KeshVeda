@@ -1,0 +1,87 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --font-serif: 'Playfair Display', Georgia, serif;
+    --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+  }
+
+  body {
+    font-family: var(--font-sans);
+    background-color: #FBF9F5;
+    color: #1A1C1E;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1, h2, h3, .font-editorial {
+    font-family: var(--font-serif);
+  }
+
+  code, pre, .font-code {
+    font-family: var(--font-mono);
+  }
+}
+
+/* Custom smooth transitions & animations */
+@keyframes pulseGlow {
+  0%, 100% {
+    box-shadow: 0 0 15px rgba(16, 185, 129, 0.2), 0 0 30px rgba(16, 185, 129, 0.1);
+  }
+  50% {
+    box-shadow: 0 0 25px rgba(16, 185, 129, 0.4), 0 0 45px rgba(16, 185, 129, 0.2);
+  }
+}
+
+@keyframes waveBar {
+  0%, 100% { height: 8px; }
+  50% { height: 32px; }
+}
+
+.animate-pulse-glow {
+  animation: pulseGlow 2.5s infinite ease-in-out;
+}
+
+.wave-bar-1 { animation: waveBar 1.2s infinite ease-in-out; }
+.wave-bar-2 { animation: waveBar 0.8s infinite ease-in-out 0.2s; }
+.wave-bar-3 { animation: waveBar 1.4s infinite ease-in-out 0.4s; }
+.wave-bar-4 { animation: waveBar 0.9s infinite ease-in-out 0.1s; }
+.wave-bar-5 { animation: waveBar 1.1s infinite ease-in-out 0.3s; }
+
+/* Custom elegant scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(15, 56, 44, 0.15);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(15, 56, 44, 0.35);
+}
+
+/* Tactile touch targets */
+.tap-card {
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.tap-card:active {
+  transform: scale(0.985);
+}
+
+/* Glassmorphism helpers */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.glass-panel-dark {
+  background: rgba(15, 20, 18, 0.92);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
