@@ -1,130 +1,89 @@
-# KeshVeda (केशवेद) — The Hair & Scalp Intake That Fills Itself
+# KeshVeda — Hair & Scalp Clinic Intake
 
-> Built for the **Haiku Studio Founding Full Stack Engineer Take-Home Challenge**.  
-> Designed for a 55-year-old on a phone in a clinic waiting room, delivering a complete, accurate, structured medical intake and live SOAP note to the doctor before the patient walks in.
+> **Haiku Studio Founding Full Stack Engineer Take-Home**  
+> A 16-question clinical intake for a hair & scalp clinic. Designed for a 55-year-old on a phone. The only fixed thing is the output: a fully structured doctor-ready schema. Everything else was a design decision.
+
+- **Live**: [https://kesh-veda.vercel.app](https://kesh-veda.vercel.app)
+- **Repo**: [https://github.com/Supriyo760/KeshVeda](https://github.com/Supriyo760/KeshVeda) · invited `nikhil@thevectorlabs.in`
 
 ---
 
-## 🚀 Live Demo & Quick Start
-
-- **Live URL**: [https://kesh-veda.vercel.app](https://kesh-veda.vercel.app)
-- **Repository**: [https://github.com/Supriyo760/KeshVeda](https://github.com/Supriyo760/KeshVeda) (Invited `nikhil@thevectorlabs.in`)
-
-### Running Locally
+## How to Run
 
 ```bash
-# 1. Clone repository
 git clone https://github.com/Supriyo760/KeshVeda.git
 cd KeshVeda
-
-# 2. Install dependencies
 npm install
-
-# 3. Start development server
-npm run dev
-
-# 4. Build & validate production bundle
-npm run build
+npm run dev        # development server at localhost:5173
+npm run build      # production bundle (validates TypeScript + Vite)
 ```
 
----
-
-## 💡 The Problem & Core Philosophy
-
-Traditional clinic software consists of forms and dashboards: *the human clicks, the software stores*. Patients abandon them, answer carelessly, or need a nurse to hold their hand.
-
-**GenoRoot flips this paradigm:**
-*The software does the work, the human gets the outcome.*
-
-1. **For the Patient**: An intake that feels effortless, snappy, and finishable in under 90 seconds on a smartphone (or 30 seconds via voice).
-2. **For the Trichologist / Dermatologist**: A live, validated 16-question structured schema (`intake-schema.json`), an automated SOAP clinical note, genetic risk scoring, and contraindication alerts.
+No environment variables. No API keys. Runs entirely offline.
 
 ---
 
-## 🎨 Taste in Product Decisions (Per-Question Breakdown)
+## My Choices
 
-We avoided the lazy trap of a single generic chatbot or a 50-field Google Form. Every question has a tailored micro-interaction:
+### Models & Services
 
-| # | Question / Area | Chosen Interaction Pattern | Why This is the Right Decision |
-|---|---|---|---|
-| **0** | **Demographics & Sex** | **Greeting Card with 1-Tap Sex Pills** | Biological sex is gathered naturally upfront. If **Male**, Q6 (*menstrual_cycle*) and Q7 (*pregnancy_related*) are automatically marked `"Not applicable"` and smoothly skipped, avoiding awkward questions. If **Female**, respectful and relevant options are shown. |
-| **1 & 2** | **Onset Age & Duration** | **Smart Mathematical Inference** | Entering current age (32) and onset age (30) automatically infers and pre-selects Q2 Duration (`"Over a year"`), turning a typing chore into a 1-tap confirmation. |
-| **3** | **Family History** | **Kinship Cards + Mutual Exclusivity** | Selecting `"No known family history"` immediately clears relative chips; selecting any relative clears `"No known family history"`. |
-| **4** | **Hair Loss Pattern** | **Interactive Visual Scalp Selector** | Patients struggle with clinical jargon. We show 6 illustrated vector scalp diagrams (Norwood II/III, Crown vertex, Ludwig part line, Diffuse, Patchy, Sudden shedding) with radiant emerald selection borders. |
-| **5** | **Medical Health** | **Multi-Chip Grid + "None" 1-Tap Clear** | Clear cards for PCOS, Thyroid, Diabetes, Autoimmune, Anemia, and a 1-tap `"None of the above"`. |
-| **6 & 7** | **Female Endocrine** | **Sex-Aware Branching** | Auto-skipped for males; presented as clean 1-tap pills for females. |
-| **8 & 9** | **Androgenic Signs** | **Binary Tactile Segmented Switches** | 1-tap large pills for Adult Acne and Excess Body Hair. |
-| **10** | **Past 6 Mo Triggers** | **Multi-Select Shock Trigger Cards** | Captures COVID/fever, crash diets, surgeries, high stress, and location changes. |
-| **11** | **Lifestyle Habits** | **Progressive Sub-Disclosure** | Clean rows. Toggling Smoking `Yes` expands severity chips (`<5`, `5-10`, `>10/day`); Toggling Salon treatments `Yes` presents quick chips (`Keratin`, `Rebonding`, `Smoothening`). |
-| **12 & 13** | **Products & Procedures** | **Collapsible Mobile Cards** | Traditional 20-cell table matrices break completely on mobile phones. Each product/procedure is a collapsible card with duration, helped, and side effects, plus a `"None of these"` fast-pass. |
-| **14** | **Side Effects Cascade** | **Smart Cross-Field Cascade** | If the patient marked `side_effects: yes` for Minoxidil or any product in Q12, Q14 automatically flags `Yes` and pre-populates context for description. |
-| **15 & 16** | **Sample & Consent** | **Visual Swab Cards & Legal Consent** | 1-tap cards for Saliva DNA, Blood Panel, or Either, with verified digital consent. |
+**No external AI model was used at runtime.** I made this choice deliberately:
 
----
+- A clinic waiting room needs sub-100ms responses. Any cloud LLM round-trip would add 1–3 seconds of latency per question.
+- Patients in a waiting room may be on a slow mobile network.
+- HIPAA-adjacent data should not leave the device if avoidable.
 
-## 🎙️ "Story Mode" — Voice & Free-Flow Intake (English & Hinglish)
+Instead I built a **client-side rule-based NLP extractor** (`src/engine/nlpExtractor.ts`) that parses conversational English and Hinglish using regex rules and a dictionary. It runs in ~10ms, works offline, and extracts 10+ clinical entities from a single typed or dictated sentence.
 
-For patients who prefer speaking or typing freely:
-- **Web Speech API Dictation** with live animated audio sound waves.
-- **Client-Side NLP Extraction Engine**: Parses conversational English, Hindi, and Hinglish (e.g. *"Mujhe crown pe bal kam ho rahe hain 6 months se. Dad bhi bald the. Minoxidil 5% use kiya 3 months, mild itchiness hui..."*).
-- Instantly extracts and populates 10+ questions at once with glowing green verification badges.
+For the **Story Mode Pass** (free-text/voice shortcut), I used the browser's native **Web Speech API** for dictation — no cloud transcription service, no cost.
 
----
+### Bought vs. Built
 
-## 🩺 Live Doctor EMR & Clinical Decision Support
-
-While the patient fills the intake, the doctor console on the right compiles:
-1. **Androgenetic Alopecia (AGA) Genetic Risk Meter (0 - 100%)**
-2. **Telogen Effluvium (TE) Acute Trigger Index (Low / Moderate / High)**
-3. **PCOS / Hyperandrogenism Triage Flag**
-4. **Drug Sensitivity & Hypersensitivity Warning**
-5. **Real-time Automated SOAP Clinical Note** (Subjective, Objective, Assessment, Plan)
-6. **100% Compliant `intake-schema.json` Validator & Export** (1-click JSON download, clipboard copy, and printable PDF intake).
-
----
-
-## 👥 1-Click Reviewer Persona Presets
-
-To make testing instant for the hiring team, use the **Test Personas** dropdown in the header:
-- **Rahul Sharma (32M)**: Classic Male Pattern Baldness (Norwood III), father had hair loss, Minoxidil user with itching.
-- **Priya Nair (28F)**: Postpartum + PCOS diffuse shedding, adult acne, sudden loss post-COVID, blood sample preferred.
-- **Vikram Sengupta (55M)**: Advanced loss >10 yrs, heavy smoker, 6 PRP sessions done, transplant candidate.
-
----
-
-## 🛠️ Tech Stack & Engineering Choices
-
-| Layer | Technology | Rationale |
+| What | Decision | Reason |
 |---|---|---|
-| **Framework** | React 19 + TypeScript + Vite | Ultra-fast load times (< 800ms), rock-solid type safety, static deployability. |
-| **Styling** | TailwindCSS + Vanilla Tokens | Warm Clinical Luxury aesthetic (*"Aesop meets modern dermatology"*), responsive split layouts, 52px+ mobile touch targets. |
-| **Icons & Visuals** | Lucide React + Custom SVG Scalp Diagrams | Custom Norwood & Ludwig hair loss illustrations with crisp vector fidelity. |
-| **NLP & Speech** | Client-Side Rule Matcher + Web Speech API | 100% offline resilience, sub-50ms execution, zero API keys required, no privacy leaks. |
-| **State Management** | React Context + Dependency Reducer | Centralized state with automatic cross-field inferences and undo/redo support. |
+| UI component library | **Built from scratch** (TailwindCSS + Lucide icons) | No component library fits a clinical luxury aesthetic out of the box. Every question card needed custom interaction design. |
+| NLP / entity extraction | **Built** (regex + rules) | Zero latency, zero API keys, works offline, no vendor lock-in. |
+| Voice transcription | **Browser Web Speech API** (free, built-in) | No setup, no cost. Works in Chrome on both phone and laptop. |
+| Deployment | **Vercel** (free tier, zero config) | Push to main → live in 30 seconds. |
+| Schema validation | **TypeScript types** matching `intake-schema.json` exactly | Build-time correctness: if a field is missing or typed wrong, `tsc` fails before deployment. |
+| Scalp pattern illustrations | **Built** (custom SVG descriptions via Lucide + CSS) | Required per-patient visual recognition aid. No stock asset matched the clinical requirement. |
+
+### How I Tested the Fill
+
+1. **TypeScript compile-time**: The entire `intake` state tree is typed directly against the `intake-schema.json` contract. Any missing or mistyped field is a compiler error, caught before `git push`.
+
+2. **Three test personas** built into the app (top-right "Test Personas" button):
+   - **Rahul, 32M** — classic male pattern baldness, Minoxidil user, family history. Tests that Q6 (menstrual cycle) and Q7 (pregnancy) are auto-skipped and marked `null` for male patients.
+   - **Priya, 28F** — PCOS, postpartum shedding, post-COVID trigger. Tests female-specific branches, hormone fields, trigger cascade.
+   - **Vikram, 55M** — advanced chronic loss, smoker, 6 PRP sessions. Tests progressive sub-disclosure on lifestyle habits and procedure matrix.
+
+3. **Cross-field logic verification**:
+   - Onset age + current age → duration auto-calculated (if onset 28, age 30 → `"1-2 years"` pre-selected).
+   - `"No known family history"` clears all relative chips (mutual exclusivity).
+   - Product side effects in Q12 cascade into Q14 auto-flag.
+   - Male sex → Q6/Q7 steps removed from the step list, fields set to `null`.
+
+4. **JSON schema export**: The live Doctor EMR panel has a `JSON Schema` tab that renders the raw structured output. I validated this manually against `intake-schema.json` for all three personas.
 
 ---
 
-## 🧪 How We Tested Schema & Form Correctness
+## What I Would Do with One More Week
 
-1. **TypeScript Type Safety**: Built directly against the 16-question contract in `intake-schema.json`.
-2. **End-to-End Browser Subagent Testing**: Automated headless subagent executed full runs across male and female flows, verified mutual exclusivity, tested duration inference, and validated 100% schema completeness.
-3. **Edge Case Validation**:
-   - Male patient $\rightarrow$ verifies Q6/Q7 are set to `"Not applicable"` and omitted from active steps.
-   - Mutual exclusivity $\rightarrow$ `"No known family history"` and `"None"` conditions correctly reset sibling options.
-   - Cascade logic $\rightarrow$ Q12 side effects correctly propagate to Q14.
+**1. Scalp photo grading (highest clinical value)**  
+Let the patient take 3 photos (frontal hairline, crown, part line) from their phone camera. Run a lightweight vision model (e.g. MobileNet fine-tuned on a Norwood/Ludwig dataset) to auto-grade hair loss stage and shaft density. The patient taps one confirmation; the doctor gets a machine-graded severity score alongside the intake.
 
----
+**2. Real LLM integration for the narrative field**  
+Replace the regex NLP extractor with a small, fast model (GPT-4o-mini or Gemini Flash) called once on the Story Mode narrative. This unlocks proper handling of ambiguous descriptions ("mera hair thoda patla ho gaya hai") that rules miss.
 
-## 🔮 What We Would Build with One More Week
+**3. EHR push via FHIR**  
+One API call to push the structured intake as a FHIR `QuestionnaireResponse` resource into the clinic's system (Practo, Epic, or a homegrown webhook). The doctor sees it in their existing workflow with zero copy-paste.
 
-If given one additional week of clinical engineering:
-1. **Multimodal Scalp Photo Diagnostic AI**: Allow patients to take 3 phone photos (Frontal hairline, Crown, and Part line); use a lightweight computer vision model to automatically grade Norwood/Ludwig stage and hair shaft density.
-2. **Direct EHR / FHIR Webhook Integration**: Bi-directional real-time sync with clinic management systems (Practo, Epic, AthenaHealth) with waiting-room queue alerts.
-3. **Duplex Voice Copilot**: Real-time voice conversation using WebRTC with natural turn-taking and multilingual dialect adaptation (Hindi, Tamil, Telugu, English).
-4. **Receptionist Tablet Dashboard**: A live waiting room dashboard showing arriving patients, real-time intake progress, and automated triage alerts for the front desk.
+**4. Receptionist queue dashboard**  
+A second route (`/staff`) showing a live waiting room table: patient name, intake % complete, triage risk flags, time in queue. Gives the front desk an at-a-glance view before the doctor walks in.
+
+**5. Proper automated test suite**  
+Replace manual persona testing with Playwright end-to-end tests that assert field values in the JSON output after each persona run. Run in CI on every push.
 
 ---
 
-- **Author**: Supriyo ([@Supriyo760](https://github.com/Supriyo760))
-- **Submitted for**: Haiku Studio Founding Full Stack Engineer Challenge
-- **License**: MIT
+**Author**: Supriyo ([@Supriyo760](https://github.com/Supriyo760))  
+**Submitted for**: Haiku Studio Founding Full Stack Engineer Challenge
