@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useIntake } from '../context/IntakeContext';
 import { MOCK_PERSONAS } from '../data/mockPersonas';
-import { Mic, Stethoscope, Volume2, VolumeX, RotateCcw, Users, CheckCircle2 } from 'lucide-react';
+import { Stethoscope, RotateCcw, Users, CheckCircle2 } from 'lucide-react';
 
 export const Header: React.FC = () => {
   const {
@@ -9,13 +9,10 @@ export const Header: React.FC = () => {
     availableSteps,
     currentStepId,
     validation,
-    isAudioMuted,
     activePersona,
     loadPersona,
     resetIntake,
-    setIsStoryModalOpen,
     setIsDoctorDrawerOpen,
-    setIsAudioMuted,
   } = useIntake();
 
   const [showPersonaMenu, setShowPersonaMenu] = useState(false);
@@ -122,14 +119,7 @@ export const Header: React.FC = () => {
             )}
           </div>
 
-          {/* Audio TTS toggle */}
-          <button
-            onClick={() => setIsAudioMuted(!isAudioMuted)}
-            className="p-2 rounded-lg text-stone-600 hover:bg-stone-200/60 transition-colors"
-            title={isAudioMuted ? "Unmute Question Audio Readout" : "Mute Question Audio Readout"}
-          >
-            {isAudioMuted ? <VolumeX className="w-4 h-4 text-stone-400" /> : <Volume2 className="w-4 h-4 text-emerald-700" />}
-          </button>
+
 
           {/* Doctor Live EMR Drawer Toggle (Mobile / Floating) */}
           <button
