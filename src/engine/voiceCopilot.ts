@@ -45,16 +45,26 @@ export function determineNextQuestion(intake: GenoRootIntakeSchema): NextQuestio
 
   // 1. Profile / Demographics
   if (!intake.metadata.biological_sex || !intake.metadata.current_age) {
+    if (name && !intake.metadata.biological_sex) {
+      return {
+        topic: 'welcome',
+        promptText: `Nice to meet you, ${name}! What is your current age and biological sex (Male or Female)?`,
+        shortLabel: "Age & Sex",
+        suggestedQuickReplies: [
+          "I am 30 male",
+          "28 female",
+          "32 years old male"
+        ]
+      };
+    }
     return {
       topic: 'welcome',
-      promptText: name 
-        ? `Hi ${name}! To begin your clinical chart, what is your current age and biological sex?`
-        : "Hello! I'm KeshVeda's Voice Assistant. I'll help you complete your consultation intake. To get started, what is your name, age, and biological sex?",
-      shortLabel: "Name, Age & Sex",
+      promptText: "What is your current age and biological sex (Male or Female)?",
+      shortLabel: "Age & Sex",
       suggestedQuickReplies: [
-        "I am 30 male",
-        "28 female",
-        "Rahul, 32 years old, male"
+        "Rahul, 30 male",
+        "Priya, 28 female",
+        "32 years old male"
       ]
     };
   }
@@ -227,13 +237,10 @@ export function buildConversationalResponse(
     return `Thank you${patientName ? `, ${patientName}` : ''}! I have recorded and validated all 16 clinical areas for your doctor. Your EMR note and genetic risk profile are ready for review.`;
   }
 
-  let ack = "Got it.";
   if (extractedLabels.length > 0) {
     const summary = extractedLabels.slice(0, 3).join(', ');
-    ack = `Recorded your ${summary}.`;
-  } else if (rawUserInput && rawUserInput.trim().length > 0) {
-    ack = "Understood.";
+    return `Recorded your ${summary}. ${nextPlan.promptText}`;
   }
 
-  return `${ack} ${nextPlan.promptText}`;
+  return `I noted that. ${nextPlan.promptText}`;
 }

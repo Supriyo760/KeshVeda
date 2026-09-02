@@ -39,10 +39,19 @@ export function extractIntakeFromNarrative(rawText: string, currentIntake?: Geno
       };
       addExtraction('patient_name', 'Patient Name', formatted);
     }
+  } else if (!currentIntake?.metadata.patient_name && /^[a-zA-Z]{3,15}(?:\s+[a-zA-Z]{3,15})?$/.test(text) && !/(male|female|none|yes|no|saliva|blood|covid|thyroid|pcos|sugar|smoke|alcohol|minoxidil|prp|hair)/i.test(text)) {
+    // Single or two word name input
+    const formatted = text.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+    patch.metadata = {
+      ...(currentIntake?.metadata || { patient_name: '', current_age: null, biological_sex: null, completed_at: null, completion_mode: 'voice', auto_filled_fields: new Set() }),
+      patient_name: formatted,
+      auto_filled_fields: currentIntake?.metadata.auto_filled_fields || new Set(),
+    };
+    addExtraction('patient_name', 'Patient Name', formatted);
   }
 
   // 1. Biological Sex Extraction (Metadata)
-  if (/\b(male|man|guy|boy|ladka|purush|mard)\b/i.test(text)) {
+  if (/\b(male|man|guy|boy|ladka|purush|mard)\b/i.test(text) || /\b(\d{2})m\b/i.test(text)) {
     patch.metadata = {
       ...(patch.metadata || currentIntake?.metadata || { patient_name: '', current_age: null, completed_at: null, completion_mode: 'voice', auto_filled_fields: new Set() }),
       biological_sex: 'male',
@@ -51,7 +60,7 @@ export function extractIntakeFromNarrative(rawText: string, currentIntake?: Geno
     patch.menstrual_cycle = 'Not applicable';
     patch.pregnancy_related = 'Not applicable';
     addExtraction('biological_sex', 'Biological Sex', 'Male (Q6/Q7 auto-skipped)');
-  } else if (/\b(female|woman|lady|girl|ladki|mahila|aurat)\b/i.test(text)) {
+  } else if (/\b(female|woman|lady|girl|ladki|mahila|aurat)\b/i.test(text) || /\b(\d{2})f\b/i.test(text)) {
     patch.metadata = {
       ...(patch.metadata || currentIntake?.metadata || { patient_name: '', current_age: null, completed_at: null, completion_mode: 'voice', auto_filled_fields: new Set() }),
       biological_sex: 'female',
@@ -72,7 +81,9 @@ export function extractIntakeFromNarrative(rawText: string, currentIntake?: Geno
   }
 
   const currentAgeMatch = text.match(/(?:i am|i'm|age is|umar)\s*(\d{2})/i) ||
-                          text.match(/(\d{2})\s*(?:years old|saal ka|saal ki|yo)\b/i);
+                          text.match(/\b(\d{2})\s*(?:years old|saal ka|saal ki|yo|years)\b/i) ||
+                          text.match(/\b(\d{2})[mf]\b/i) ||
+                          text.match(/^\s*(\d{2})\s*$/);
   if (currentAgeMatch && !patch.age_hair_loss_began) {
     const age = parseInt(currentAgeMatch[1], 10);
     if (age >= 12 && age <= 90) {
