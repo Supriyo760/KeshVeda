@@ -27,14 +27,18 @@ export const LifestyleHabitsStep: React.FC = () => {
   const { intake, updateField, nextStep, prevStep } = useIntake();
   const habits = intake.habits;
 
+  const updateHabits = (patch: Partial<GenoRootIntakeSchema['habits']>) => {
+    updateField('habits', (prev) => ({
+      ...prev,
+      ...patch,
+    }));
+  };
+
   const updateHabit = <K extends keyof GenoRootIntakeSchema['habits']>(
     key: K,
     value: GenoRootIntakeSchema['habits'][K]
   ) => {
-    updateField('habits', {
-      ...habits,
-      [key]: value,
-    });
+    updateHabits({ [key]: value });
   };
 
   const handleSalonChip = (chip: string) => {
@@ -95,8 +99,10 @@ export const LifestyleHabitsStep: React.FC = () => {
               <button
                 type="button"
                 onClick={() => {
-                  updateHabit('smoking', 'no');
-                  updateHabit('smoking_severity', null);
+                  updateHabits({
+                    smoking: 'no',
+                    smoking_severity: null,
+                  });
                 }}
                 className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
                   habits.smoking === 'no'
@@ -290,8 +296,10 @@ export const LifestyleHabitsStep: React.FC = () => {
               <button
                 type="button"
                 onClick={() => {
-                  updateHabit('salon_treatments', 'no');
-                  updateHabit('salon_treatment_detail', '');
+                  updateHabits({
+                    salon_treatments: 'no',
+                    salon_treatment_detail: '',
+                  });
                 }}
                 className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
                   habits.salon_treatments === 'no'

@@ -50,7 +50,10 @@ interface IntakeContextType {
   isDoctorDrawerOpen: boolean;
   isAudioMuted: boolean;
   activePersona: string | null;
-  updateField: <K extends keyof GenoRootIntakeSchema>(key: K, value: GenoRootIntakeSchema[K]) => void;
+  updateField: <K extends keyof GenoRootIntakeSchema>(
+    key: K,
+    value: GenoRootIntakeSchema[K] | ((prevVal: GenoRootIntakeSchema[K]) => GenoRootIntakeSchema[K])
+  ) => void;
   updateMetadata: (patch: Partial<GenoRootIntakeSchema['metadata']>) => void;
   batchUpdate: (patch: Partial<GenoRootIntakeSchema>, extractedKeys?: string[]) => void;
   goToStep: (stepId: StepId) => void;
@@ -109,13 +112,19 @@ export const IntakeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   }, [isAudioMuted]);
 
   // Update a single field with smart inference cascades
-  const updateField = useCallback(<K extends keyof GenoRootIntakeSchema>(key: K, value: GenoRootIntakeSchema[K]) => {
+  const updateField = useCallback(<K extends keyof GenoRootIntakeSchema>(
+    key: K, 
+    value: GenoRootIntakeSchema[K] | ((prevVal: GenoRootIntakeSchema[K]) => GenoRootIntakeSchema[K])
+  ) => {
     setIntake(prev => {
-      const next = { ...prev, [key]: value };
+      const resolvedValue = typeof value === 'function' 
+        ? (value as (prevVal: GenoRootIntakeSchema[K]) => GenoRootIntakeSchema[K])(prev[key]) 
+        : value;
+      const next = { ...prev, [key]: resolvedValue };
 
       // Smart duration inference from age began
-      if (key === 'age_hair_loss_began' && typeof value === 'number') {
-        const inferredDuration = inferDurationFromAges(prev.metadata.current_age, value);
+      if (key === 'age_hair_loss_began' && typeof resolvedValue === 'number') {
+        const inferredDuration = inferDurationFromAges(prev.metadata.current_age, resolvedValue);
         if (inferredDuration && !prev.duration) {
           next.duration = inferredDuration;
         }
