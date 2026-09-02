@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useIntake } from '../context/IntakeContext';
 import { extractIntakeFromNarrative, ExtractionResult } from '../engine/nlpExtractor';
 import { determineNextQuestion, buildConversationalResponse, CopilotMessage, NextQuestionPlan } from '../engine/voiceCopilot';
@@ -17,7 +17,8 @@ import {
   User, 
   Send,
   RotateCcw,
-  CheckCircle2
+  CheckCircle2,
+  Play
 } from 'lucide-react';
 
 export const StoryModeModal: React.FC = () => {
@@ -52,26 +53,25 @@ export const StoryModeModal: React.FC = () => {
 
   const recognitionRef = useRef<any>(null);
   const chatBottomRef = useRef<HTMLDivElement>(null);
+  const isListeningRef = useRef(isListening);
+  isListeningRef.current = isListening;
+  const isAudioMutedRef = useRef(isAudioMuted);
+  isAudioMutedRef.current = isAudioMuted;
   const intakeRef = useRef(intake);
   intakeRef.current = intake;
 
   // Speak AI text using Web Speech Synthesis
-  const speakAiMessage = useCallback((textToSpeak: string, autoListenAfter = true) => {
+  const speakText = (textToSpeak: string) => {
     if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
     window.speechSynthesis.cancel();
 
-    if (isAudioMuted) {
-      if (autoListenAfter && recognitionRef.current && !isListening) {
-        try { recognitionRef.current.start(); setIsListening(true); } catch (e) {}
-      }
-      return;
-    }
+    if (isAudioMutedRef.current) return;
 
     const utterance = new SpeechSynthesisUtterance(textToSpeak);
     utterance.rate = 1.05;
     utterance.pitch = 1.0;
     
-    // Pick an English-IN or clear natural English voice if available
+    // Pick clean natural English voice if available
     const voices = window.speechSynthesis.getVoices();
     const preferredVoice = voices.find(v => v.lang.includes('en-IN') || v.lang.includes('en_IN')) ||
                            voices.find(v => v.name.includes('Google') || v.name.includes('Natural')) ||
@@ -80,21 +80,10 @@ export const StoryModeModal: React.FC = () => {
 
     utterance.onstart = () => {
       setIsAiSpeaking(true);
-      if (isListening && recognitionRef.current) {
-        try { recognitionRef.current.stop(); setIsListening(false); } catch (e) {}
-      }
     };
 
     utterance.onend = () => {
       setIsAiSpeaking(false);
-      if (autoListenAfter && recognitionRef.current && !isListening) {
-        try {
-          recognitionRef.current.start();
-          setIsListening(true);
-        } catch (e) {
-          console.warn('Auto-listen error:', e);
-        }
-      }
     };
 
     utterance.onerror = () => {
@@ -102,7 +91,7 @@ export const StoryModeModal: React.FC = () => {
     };
 
     window.speechSynthesis.speak(utterance);
-  }, [isAudioMuted, isListening]);
+  };
 
   // Initialize Speech Recognition
   useEffect(() => {
@@ -115,6 +104,7 @@ export const StoryModeModal: React.FC = () => {
         recognition.lang = 'en-IN';
 
         recognition.onresult = (event: any) => {
+          setIsListening(false);
           const transcript = event.results[0][0].transcript;
           if (activeMode === 'copilot') {
             handlePatientSpokenTurn(transcript);
@@ -124,7 +114,7 @@ export const StoryModeModal: React.FC = () => {
         };
 
         recognition.onerror = (err: any) => {
-          console.warn('Speech recognition error:', err);
+          console.warn('Speech recognition status:', err.error);
           setIsListening(false);
         };
 
@@ -139,7 +129,9 @@ export const StoryModeModal: React.FC = () => {
     }
 
     return () => {
-      if (recognitionRef.current) recognitionRef.current.stop();
+      if (recognitionRef.current) {
+        try { recognitionRef.current.stop(); } catch (e) {}
+      }
       if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
         window.speechSynthesis.cancel();
       }
@@ -161,7 +153,7 @@ export const StoryModeModal: React.FC = () => {
     }
   }, [freeFlowText, intake]);
 
-  // Initial Copilot greeting on open
+  // Initial Copilot greeting when modal opens
   useEffect(() => {
     if (isStoryModalOpen && activeMode === 'copilot' && messages.length === 0) {
       const initialPlan = determineNextQuestion(intakeRef.current);
@@ -176,14 +168,26 @@ export const StoryModeModal: React.FC = () => {
 
       setMessages([welcomeMsg]);
       setTimeout(() => {
-        speakAiMessage(initialPlan.promptText, true);
-      }, 300);
+        speakText(initialPlan.promptText);
+      }, 250);
     }
-  }, [isStoryModalOpen, activeMode, speakAiMessage]);
+  }, [isStoryModalOpen, activeMode]);
 
   // Handle patient spoken / typed reply in Copilot mode
   const handlePatientSpokenTurn = (text: string) => {
     if (!text.trim()) return;
+
+    // Stop listening
+    if (recognitionRef.current) {
+      try { recognitionRef.current.stop(); } catch (e) {}
+    }
+    setIsListening(false);
+
+    // Cancel any current AI speech
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+    }
+    setIsAiSpeaking(false);
 
     // 1. Run NLP Extraction
     const extractionResult = extractIntakeFromNarrative(text, intakeRef.current);
@@ -218,7 +222,8 @@ export const StoryModeModal: React.FC = () => {
     const aiResponseText = buildConversationalResponse(
       extractionResult.confidenceSummary.map(c => c.label),
       nextPlan,
-      updatedIntake.metadata.patient_name
+      updatedIntake.metadata.patient_name,
+      text
     );
 
     const aiMsg: CopilotMessage = {
@@ -231,25 +236,31 @@ export const StoryModeModal: React.FC = () => {
     setMessages(prev => [...prev, userMsg, aiMsg]);
     setCopilotInput('');
 
-    // Speak AI response and auto-listen
-    speakAiMessage(aiResponseText, nextPlan.topic !== 'all_complete');
+    // Speak AI response cleanly
+    setTimeout(() => {
+      speakText(aiResponseText);
+    }, 100);
   };
 
   const toggleMic = () => {
     if (!recognitionRef.current) return;
+    
+    // Stop any playing speech before listening
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+    }
+    setIsAiSpeaking(false);
+
     if (isListening) {
-      recognitionRef.current.stop();
+      try { recognitionRef.current.stop(); } catch (e) {}
       setIsListening(false);
     } else {
-      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-        window.speechSynthesis.cancel();
-      }
-      setIsAiSpeaking(false);
       try {
         recognitionRef.current.start();
         setIsListening(true);
       } catch (err) {
-        console.error('Mic start error:', err);
+        console.warn('Mic start notice:', err);
+        setIsListening(false);
       }
     }
   };
@@ -258,7 +269,9 @@ export const StoryModeModal: React.FC = () => {
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
       window.speechSynthesis.cancel();
     }
-    if (recognitionRef.current) recognitionRef.current.stop();
+    if (recognitionRef.current) {
+      try { recognitionRef.current.stop(); } catch (e) {}
+    }
     setIsStoryModalOpen(false);
     goToStep('summary_review');
   };
@@ -284,14 +297,14 @@ export const StoryModeModal: React.FC = () => {
       timestamp: Date.now(),
     };
     setMessages([welcomeMsg]);
-    speakAiMessage(initialPlan.promptText, true);
+    speakText(initialPlan.promptText);
   };
 
   if (!isStoryModalOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-stone-950/75 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="bg-[#0F1715] text-stone-100 rounded-3xl max-w-3xl w-full border border-emerald-900/50 shadow-2xl overflow-hidden flex flex-col h-[90vh] max-h-[750px]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-stone-950/80 backdrop-blur-md animate-in fade-in duration-200">
+      <div className="bg-[#0F1715] text-stone-100 rounded-3xl max-w-3xl w-full border border-emerald-900/50 shadow-2xl overflow-hidden flex flex-col h-[92vh] max-h-[760px]">
         {/* Modal Top Header */}
         <div className="flex items-center justify-between px-5 py-3.5 border-b border-stone-800 bg-stone-900/90 shrink-0">
           <div className="flex items-center gap-2.5">
@@ -304,17 +317,24 @@ export const StoryModeModal: React.FC = () => {
                   Voice Consultation Copilot
                 </h2>
                 <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-700/50">
-                  AI Duplex
+                  Interactive AI
                 </span>
               </div>
-              <p className="text-[11px] text-stone-400">Fill your entire intake naturally through voice conversation</p>
+              <p className="text-[11px] text-stone-400">Fill your intake naturally through voice conversation</p>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
             {/* Audio Voice Mute Toggle */}
             <button
-              onClick={() => setIsAudioMuted(!isAudioMuted)}
+              onClick={() => {
+                const nextMuted = !isAudioMuted;
+                setIsAudioMuted(nextMuted);
+                if (nextMuted && typeof window !== 'undefined' && 'speechSynthesis' in window) {
+                  window.speechSynthesis.cancel();
+                  setIsAiSpeaking(false);
+                }
+              }}
               className="p-2 rounded-xl text-stone-400 hover:text-white hover:bg-stone-800 transition-colors"
               title={isAudioMuted ? "Unmute AI Voice Readout" : "Mute AI Voice Readout"}
             >
@@ -325,7 +345,9 @@ export const StoryModeModal: React.FC = () => {
             <button
               onClick={() => {
                 if (typeof window !== 'undefined' && 'speechSynthesis' in window) window.speechSynthesis.cancel();
-                if (recognitionRef.current) recognitionRef.current.stop();
+                if (recognitionRef.current) {
+                  try { recognitionRef.current.stop(); } catch (e) {}
+                }
                 setIsStoryModalOpen(false);
               }}
               className="p-2 rounded-xl text-stone-400 hover:text-white hover:bg-stone-800 transition-colors"
@@ -393,13 +415,24 @@ export const StoryModeModal: React.FC = () => {
                     )}
 
                     <div
-                      className={`max-w-[82%] sm:max-w-[75%] p-3.5 sm:p-4 rounded-2xl text-xs sm:text-sm leading-relaxed ${
+                      className={`max-w-[84%] sm:max-w-[78%] p-3.5 sm:p-4 rounded-2xl text-xs sm:text-sm leading-relaxed ${
                         isAi
                           ? 'bg-stone-900 border border-stone-800 text-stone-200 rounded-tl-sm shadow-md'
                           : 'bg-emerald-700 text-white rounded-tr-sm shadow-md shadow-emerald-900/30'
                       }`}
                     >
-                      <p>{msg.text}</p>
+                      <div className="flex items-start justify-between gap-2">
+                        <p>{msg.text}</p>
+                        {isAi && (
+                          <button
+                            onClick={() => speakText(msg.text)}
+                            className="p-1 rounded text-stone-400 hover:text-emerald-400 transition-colors shrink-0"
+                            title="Replay Audio"
+                          >
+                            <Volume2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
 
                       {/* Extracted Entity Badges */}
                       {msg.extractedPills && msg.extractedPills.length > 0 && (
@@ -407,7 +440,7 @@ export const StoryModeModal: React.FC = () => {
                           {msg.extractedPills.map((pill, idx) => (
                             <span
                               key={idx}
-                              className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-md bg-emerald-950/80 text-emerald-300 border border-emerald-700/50"
+                              className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-md bg-emerald-950/90 text-emerald-300 border border-emerald-700/50"
                             >
                               <Check className="w-3 h-3 text-emerald-400" />
                               <span>{pill.label}: <strong>{pill.value}</strong></span>
@@ -428,16 +461,16 @@ export const StoryModeModal: React.FC = () => {
 
               {/* Status Indicator when AI is speaking or Listening */}
               {isAiSpeaking && (
-                <div className="flex items-center gap-2 text-xs text-emerald-400 bg-emerald-950/40 border border-emerald-800/40 p-2.5 rounded-xl w-fit animate-pulse">
+                <div className="flex items-center gap-2 text-xs text-emerald-400 bg-emerald-950/40 border border-emerald-800/40 p-2.5 rounded-xl w-fit">
                   <Volume2 className="w-4 h-4 animate-bounce" />
                   <span>KeshVeda Assistant is speaking...</span>
                 </div>
               )}
 
               {isListening && (
-                <div className="flex items-center gap-2 text-xs text-red-400 bg-red-950/30 border border-red-800/30 p-2.5 rounded-xl w-fit">
+                <div className="flex items-center gap-2 text-xs text-red-400 bg-red-950/40 border border-red-800/40 p-2.5 rounded-xl w-fit">
                   <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-ping" />
-                  <span>Listening to you... speak naturally</span>
+                  <span>Listening... Speak your answer now (or tap mic to stop)</span>
                 </div>
               )}
 
@@ -445,7 +478,7 @@ export const StoryModeModal: React.FC = () => {
             </div>
 
             {/* Interactive Turn Controls Centerpiece */}
-            <div className="p-4 border-t border-stone-800 bg-stone-900/90 space-y-3 shrink-0">
+            <div className="p-4 border-t border-stone-800 bg-stone-900/95 space-y-3 shrink-0">
               {/* Quick Reply Chips */}
               {currentPlan.suggestedQuickReplies.length > 0 && (
                 <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
@@ -456,7 +489,7 @@ export const StoryModeModal: React.FC = () => {
                     <button
                       key={idx}
                       onClick={() => handlePatientSpokenTurn(reply)}
-                      className="px-2.5 py-1 rounded-lg text-xs bg-stone-800 hover:bg-emerald-950 hover:border-emerald-700/60 border border-stone-700 text-stone-300 hover:text-emerald-200 transition-all whitespace-nowrap shrink-0"
+                      className="px-2.5 py-1 rounded-lg text-xs bg-stone-800 hover:bg-emerald-950 hover:border-emerald-700/60 border border-stone-700 text-stone-300 hover:text-emerald-200 transition-all whitespace-nowrap shrink-0 active:scale-95"
                     >
                       "{reply}"
                     </button>
@@ -470,16 +503,19 @@ export const StoryModeModal: React.FC = () => {
                 <button
                   onClick={toggleMic}
                   disabled={!speechSupported}
-                  className={`relative w-12 h-12 rounded-2xl flex items-center justify-center transition-all shadow-md shrink-0 ${
+                  className={`relative px-4 h-12 rounded-2xl flex items-center justify-center gap-2 font-bold text-xs transition-all shadow-md shrink-0 ${
                     isListening
-                      ? 'bg-red-500 text-white shadow-red-500/40 scale-105 animate-pulse'
+                      ? 'bg-red-500 hover:bg-red-600 text-white shadow-red-500/40 scale-105 animate-pulse'
                       : isAiSpeaking
                       ? 'bg-amber-600 text-white'
                       : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-600/20 active:scale-95'
                   }`}
-                  title={isListening ? "Stop Listening" : "Tap to Speak"}
+                  title={isListening ? "Tap to Stop Listening" : "Tap to Speak"}
                 >
                   {isListening ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
+                  <span className="hidden sm:inline">
+                    {isListening ? 'Stop' : 'Tap to Speak'}
+                  </span>
                 </button>
 
                 {/* Text Input for Typing if preferred */}
@@ -496,8 +532,6 @@ export const StoryModeModal: React.FC = () => {
                     placeholder={
                       isListening
                         ? "Listening to your voice..."
-                        : isAiSpeaking
-                        ? "Assistant speaking..."
                         : "Type or speak your answer in English / Hinglish..."
                     }
                     className="w-full bg-stone-950 border border-stone-800 rounded-xl px-4 py-3 text-xs sm:text-sm text-stone-100 placeholder-stone-500 focus:outline-none focus:border-emerald-500 pr-10"
@@ -525,13 +559,13 @@ export const StoryModeModal: React.FC = () => {
               {/* Bottom Finish Handoff Bar */}
               <div className="flex items-center justify-between pt-1 text-[11px] text-stone-400">
                 <span className="flex items-center gap-1">
-                  💡 You can speak freely or tap any suggestion above.
+                  💡 Tap the microphone to speak, or tap any suggestion above.
                 </span>
                 <button
                   onClick={handleFinishAndReview}
                   className="flex items-center gap-1 font-bold text-emerald-400 hover:text-emerald-300 transition-colors"
                 >
-                  <span>Review Completed Intake</span>
+                  <span>Finish & Review Chart</span>
                   <ArrowRight className="w-3.5 h-3.5" />
                 </button>
               </div>

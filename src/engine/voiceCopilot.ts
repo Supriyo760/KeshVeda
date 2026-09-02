@@ -220,7 +220,8 @@ export function determineNextQuestion(intake: GenoRootIntakeSchema): NextQuestio
 export function buildConversationalResponse(
   extractedLabels: string[],
   nextPlan: NextQuestionPlan,
-  patientName?: string
+  patientName?: string,
+  rawUserInput?: string
 ): string {
   if (nextPlan.topic === 'all_complete') {
     return `Thank you${patientName ? `, ${patientName}` : ''}! I have recorded and validated all 16 clinical areas for your doctor. Your EMR note and genetic risk profile are ready for review.`;
@@ -230,6 +231,8 @@ export function buildConversationalResponse(
   if (extractedLabels.length > 0) {
     const summary = extractedLabels.slice(0, 3).join(', ');
     ack = `Recorded your ${summary}.`;
+  } else if (rawUserInput && rawUserInput.trim().length > 0) {
+    ack = "Understood.";
   }
 
   return `${ack} ${nextPlan.promptText}`;
