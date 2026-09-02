@@ -25,10 +25,26 @@ export function extractIntakeFromNarrative(rawText: string, currentIntake?: Geno
     }
   };
 
+  // 0. Patient Name Extraction (Metadata)
+  const nameMatch = text.match(/(?:my name is|i am|i'm|this is|naam hai|mera naam)\s+([a-zA-Z]+(?:\s+[a-zA-Z]+)?)/i);
+  if (nameMatch) {
+    const candidate = nameMatch[1].trim();
+    const blacklist = ['a', 'the', 'male', 'female', 'guy', 'girl', 'boy', 'experiencing', 'noticing', 'having', 'suffering', 'losing', 'facing', 'taking'];
+    if (!blacklist.includes(candidate.toLowerCase())) {
+      const formatted = candidate.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+      patch.metadata = {
+        ...(currentIntake?.metadata || { patient_name: '', current_age: null, biological_sex: null, completed_at: null, completion_mode: 'voice', auto_filled_fields: new Set() }),
+        patient_name: formatted,
+        auto_filled_fields: currentIntake?.metadata.auto_filled_fields || new Set(),
+      };
+      addExtraction('patient_name', 'Patient Name', formatted);
+    }
+  }
+
   // 1. Biological Sex Extraction (Metadata)
   if (/\b(male|man|guy|boy|ladka|purush|mard)\b/i.test(text)) {
     patch.metadata = {
-      ...(currentIntake?.metadata || { patient_name: '', current_age: null, completed_at: null, completion_mode: 'voice', auto_filled_fields: new Set() }),
+      ...(patch.metadata || currentIntake?.metadata || { patient_name: '', current_age: null, completed_at: null, completion_mode: 'voice', auto_filled_fields: new Set() }),
       biological_sex: 'male',
       auto_filled_fields: currentIntake?.metadata.auto_filled_fields || new Set(),
     };
@@ -37,7 +53,7 @@ export function extractIntakeFromNarrative(rawText: string, currentIntake?: Geno
     addExtraction('biological_sex', 'Biological Sex', 'Male (Q6/Q7 auto-skipped)');
   } else if (/\b(female|woman|lady|girl|ladki|mahila|aurat)\b/i.test(text)) {
     patch.metadata = {
-      ...(currentIntake?.metadata || { patient_name: '', current_age: null, completed_at: null, completion_mode: 'voice', auto_filled_fields: new Set() }),
+      ...(patch.metadata || currentIntake?.metadata || { patient_name: '', current_age: null, completed_at: null, completion_mode: 'voice', auto_filled_fields: new Set() }),
       biological_sex: 'female',
       auto_filled_fields: currentIntake?.metadata.auto_filled_fields || new Set(),
     };
@@ -165,17 +181,28 @@ export function extractIntakeFromNarrative(rawText: string, currentIntake?: Geno
   }
 
   // 8. Acne / Oily skin & Excess Hair (Q8, Q9)
-  if (/(acne|pimples|oily skin|teliy twacha|breakouts|sebum)/i.test(text)) {
+  if (/(no acne|no pimples|clear skin|no oily skin|no breakout)/i.test(text)) {
+    patch.adult_acne_oily_skin = 'no';
+    addExtraction('adult_acne_oily_skin', 'Adult Acne / Oily Skin', 'No');
+  } else if (/(acne|pimples|oily skin|teliy twacha|breakouts|sebum)/i.test(text)) {
     patch.adult_acne_oily_skin = 'yes';
     addExtraction('adult_acne_oily_skin', 'Adult Acne / Oily Skin', 'Yes');
   }
-  if (/(facial hair|excess body hair|hirsutism|chin hair|chehre pe baal)/i.test(text)) {
+
+  if (/(no facial hair|no excess body hair|no excess hair|normal body hair)/i.test(text)) {
+    patch.excess_body_facial_hair = 'no';
+    addExtraction('excess_body_facial_hair', 'Excess Facial/Body Hair', 'No');
+  } else if (/(facial hair|excess body hair|hirsutism|chin hair|chehre pe baal)/i.test(text)) {
     patch.excess_body_facial_hair = 'yes';
     addExtraction('excess_body_facial_hair', 'Excess Facial/Body Hair', 'Yes');
   }
 
   // 9. Past 6 Months Triggers (Q10)
   const triggers: GenoRootIntakeSchema['past_6_months'] = [];
+  if (/(no triggers|no illness|nothing major|no major trigger|healthy past 6 months)/i.test(text)) {
+    patch.past_6_months = [];
+    addExtraction('past_6_months', 'Recent Triggers', 'None');
+  }
   if (/(crash diet|weight loss|vajan kam|fasting|keto|dieting)/i.test(text)) {
     triggers.push('Crash dieting or major weight loss');
   }
