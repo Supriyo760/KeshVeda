@@ -4,8 +4,7 @@
 > A 16-question clinical intake for a hair & scalp clinic. Designed for a 55-year-old on a phone. The only fixed thing is the output: a fully structured doctor-ready schema. Everything else was a design decision.
 
 - **Live**: [https://kesh-veda.vercel.app](https://kesh-veda.vercel.app)
-- **Repo**: [https://github.com/Supriyo760/KeshVeda](https://github.com/Supriyo760/KeshVeda) · invited `nikhil@thevectorlabs.in`
-
+- **Repo**: [https://github.com/Supriyo760/KeshVeda](https://github.com/Supriyo760/KeshVeda) 
 ---
 
 ## How to Run
