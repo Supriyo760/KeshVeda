@@ -125,8 +125,6 @@ If given one additional week of clinical engineering:
 
 ---
 
-## 👨‍💻 Submission Details
-
-- **Author**: Antigravity Full Stack Engineer
-- **Submitted for**: Haiku Studio (Nikhil / vectorlabs)
+- **Author**: Supriyo ([@Supriyo760](https://github.com/Supriyo760))
+- **Submitted for**: Haiku Studio Founding Full Stack Engineer Challenge
 - **License**: MIT
