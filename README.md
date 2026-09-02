@@ -8,14 +8,14 @@
 ## 🚀 Live Demo & Quick Start
 
 - **Live URL**: [Deployable instantly on Vercel / Netlify / Render]
-- **Repository**: Public GitHub repo (or invited `nikhil@thevectorlabs.in`)
+- **Repository**: [https://github.com/Supriyo760/KeshVeda](https://github.com/Supriyo760/KeshVeda) (Invited `nikhil@thevectorlabs.in`)
 
 ### Running Locally
 
 ```bash
 # 1. Clone repository
-git clone <repo-url>
-cd haiku
+git clone https://github.com/Supriyo760/KeshVeda.git
+cd KeshVeda
 
 # 2. Install dependencies
 npm install
