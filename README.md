@@ -7,7 +7,7 @@
 
 ## 🚀 Live Demo & Quick Start
 
-- **Live URL**: [Deployable instantly on Vercel / Netlify / Render]
+- **Live URL**: [https://kesh-veda.vercel.app](https://kesh-veda.vercel.app)
 - **Repository**: [https://github.com/Supriyo760/KeshVeda](https://github.com/Supriyo760/KeshVeda) (Invited `nikhil@thevectorlabs.in`)
 
 ### Running Locally
