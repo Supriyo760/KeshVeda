@@ -26,6 +26,19 @@ export const PersonalInfoStep: React.FC = () => {
         <p className="text-sm text-stone-600 mt-2 leading-relaxed">
           Before your doctor consultation, we'll guide you through a 16-question clinical profile in under 2 minutes. What you enter is synthesized directly into your physician's pre-exam chart.
         </p>
+
+        <div className="mt-4 pt-3 border-t border-emerald-900/10 flex flex-wrap items-center justify-between gap-2">
+          <span className="text-xs text-emerald-900/80 font-medium">
+            💡 Want to finish in 30 seconds? Speak or type your story in English or Hinglish:
+          </span>
+          <button
+            onClick={() => setIsStoryModalOpen(true)}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-[#0F382C] text-white hover:bg-[#164e3d] shadow-sm transition-all"
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>Try Story Mode Pass</span>
+          </button>
+        </div>
       </div>
 
       {/* Patient Profile Inputs */}
