@@ -62,14 +62,14 @@ export const Header: React.FC = () => {
 
         {/* Action Controls & Reviewer Tools */}
         <div className="flex items-center gap-2">
-          {/* Voice Copilot Trigger */}
+          {/* Voice Story Mode Trigger */}
           <button
             onClick={() => setIsStoryModalOpen(true)}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm transition-all transform active:scale-95"
-            title="Conversational Voice Copilot (Interactive AI Doctor)"
+            title="Express Voice Story Mode (Hinglish & English)"
           >
             <Mic className="w-3.5 h-3.5 animate-pulse" />
-            <span className="hidden sm:inline">Voice Copilot</span>
+            <span className="hidden sm:inline">Voice / Story Mode</span>
             <span className="sm:hidden">Voice</span>
           </button>
 
